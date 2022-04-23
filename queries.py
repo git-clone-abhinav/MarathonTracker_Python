@@ -50,7 +50,7 @@ def testQuery(query):# test query - Development only
                 finally:
                     return None
 
-def runQuery(query,data,queryType="non-dml"): # run query - Production only
+def runQuery(query,data,queryType): # run query - Production only
     conn = connectServer()
     if conn is not None:
         try:# try running query
@@ -61,6 +61,15 @@ def runQuery(query,data,queryType="non-dml"): # run query - Production only
                 cursor.close()
                 conn.close()
                 logger.logit(f"Succesfull **DML Query** - `{query}`")
+                return True
+            elif queryType == "many":
+                cursor = conn.cursor()
+                cursor.executemany(query,data)
+                conn.commit()
+                cursor.close()
+                conn.close()
+                logger.logit(f"Successfull {cursor.rowcount} row insertions")
+                logger.logit(f"Succesfull **INSERT Many Query** - `{query}`")
                 return True
             else:
                 cursor = conn.cursor()
