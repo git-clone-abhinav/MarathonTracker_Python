@@ -11,16 +11,14 @@ cors = CORS(app, resources={r"/*": {"origins": "*"}})
 UPLOAD_FOLDER = 'uploads'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 @app.route('/', methods = ['GET'])
-
 def root():
     query = f'SELECT * from users ;'
-    result = queries.runQuery(query,data=None)
+    result = queries.runQuery(query,data=None,queryType="non-DQL")
     if len(result) != 0:
         response = {'headers':['User ID','Name',"Check Point 1 TimeStamp","Finish TimeStamp","Rank"],'rows':result}
     else:
         response = {'headers':["No Data"],'rows':[]}
     logger.logit("Rendered `ROOT`")
-    logger.logit(response)
     return jsonify(response)
 
 @app.route('/insert_user', methods = ['GET'])
@@ -28,7 +26,7 @@ def insertUser():
     user_id = str(request.args.get('user_id'))
     name = str(request.args.get('name'))
     try:
-        result = queries.runQuery("INSERT INTO users (uid,name,cp1,finish,rank) VALUES (%s,%s,%s,%s,%s)",(user_id,name,logger.get_time(),logger.get_time(),1),"DML")
+        result = queries.runQuery("INSERT INTO users (uid,name) VALUES (%s,%s)",(user_id,name),"DML")
         response = {'headers':["Success"],'rows':result}
     except Exception as e:
         response = {'headers':["Error"],'rows':[e]}

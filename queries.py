@@ -57,10 +57,10 @@ def runQuery(query,data,queryType): # run query - Production only
             if queryType == "DML":
                 cursor = conn.cursor()
                 cursor.execute(query,data)
-                conn.commit()
+                conn.commit() # remove this comment later
                 cursor.close()
                 conn.close()
-                logger.logit(f"Succesfull **DML Query** - `{query}`")
+                # logger.logit(f"Succesfull **DML Query** - `{query}`")
                 return True
             elif queryType == "many":
                 cursor = conn.cursor()
@@ -68,8 +68,8 @@ def runQuery(query,data,queryType): # run query - Production only
                 conn.commit()
                 cursor.close()
                 conn.close()
-                logger.logit(f"Successfull {cursor.rowcount} row insertions")
-                logger.logit(f"Succesfull **INSERT Many Query** - `{query}`")
+                # logger.logit(f"Successfull {cursor.rowcount} row insertions")
+                # logger.logit(f"Succesfull **INSERT Many Query** - `{query}`")
                 return True
             else:
                 cursor = conn.cursor()
@@ -77,7 +77,7 @@ def runQuery(query,data,queryType): # run query - Production only
                 result = cursor.fetchall()
                 cursor.close()
                 conn.close()
-                logger.logit(f"Succesfull **Non-DML Query** - `{query}`")
+                # logger.logit(f"Succesfull **Non-DML Query** - `{query}`")
                 return result
         except Error as e: # if query fails
             logger.logit(f"Failure **Query** - `{query}` - `{e}`")
