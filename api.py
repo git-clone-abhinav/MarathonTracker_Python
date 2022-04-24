@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify,render_template
+from flask import Flask, request, jsonify,render_template, send_file
 from flask_cors import CORS, cross_origin
 from werkzeug.utils import secure_filename
 import logger
@@ -10,6 +10,8 @@ CORS(app)
 cors = CORS(app, resources={r"/*": {"origins": "*"}})
 UPLOAD_FOLDER = 'uploads'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+DOWNLOAD_FOLDER = 'download_files'
+app.config['DOWNLOAD_FOLDER'] = DOWNLOAD_FOLDER
 
 @app.route('/', methods=['GET'])
 def home():
@@ -167,10 +169,17 @@ def upload():
             logger.logit(f"Error while uploading to database: {e}")
         return response
 
+@app.route('/download')
+def downloadCSV():
+    # localhost:2400/download
+    logger.logit(f"CSV file downloaded")
+    return send_file(os.path.join(app.config['DOWNLOAD_FOLDER'], 'users.csv'))
+
 @app.route('/delete', methods = ['GET'])
 def deleteUserData():
     # localhost:2400/delete
     try:
+        os.remove(os.path.join(app.config['UPLOAD_FOLDER'], 'w_group.csv'))
         queries.runQuery("DELETE FROM users;",None,"DML")
         queries.runQuery(f"UPDATE config SET last_rank=0",None,"DML")
         response = {'headers':["Success"],'rows':'Deleted'}
