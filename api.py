@@ -179,14 +179,15 @@ def downloadCSV():
 def deleteUserData():
     # localhost:2400/delete
     try:
-        os.remove(os.path.join(app.config['UPLOAD_FOLDER'], 'users.csv'))
+        if os.exist(os.path.join(app.config['UPLOAD_FOLDER'], 'users.csv')):
+            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], 'users.csv'))
         queries.runQuery("DELETE FROM users;",None,"DML")
         queries.runQuery(f"UPDATE config SET last_rank=0",None,"DML")
         response = {'headers':["Success"],'rows':'Deleted'}
         logger.logit("Deleted all data from `users`&`config` table")
     except Exception as e:
         response = {'headers':["Error"],'rows':[e]}
-        logger.logit(f"Error while deleting user: {e}")
+        logger.logit(f"Error while deleting : {e}")
     finally:
         return response
 
