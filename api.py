@@ -179,7 +179,7 @@ def downloadCSV():
 def deleteUserData():
     # localhost:2400/delete
     try:
-        os.remove(os.path.join(app.config['UPLOAD_FOLDER'], 'w_group.csv'))
+        os.remove(os.path.join(app.config['UPLOAD_FOLDER'], 'users.csv'))
         queries.runQuery("DELETE FROM users;",None,"DML")
         queries.runQuery(f"UPDATE config SET last_rank=0",None,"DML")
         response = {'headers':["Success"],'rows':'Deleted'}
