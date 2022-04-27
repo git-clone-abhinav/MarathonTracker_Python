@@ -36,7 +36,7 @@ def config():
     query = f'SELECT * from config ;'
     result = queries.runQuery(query,data=None,queryType="non-DQL")
     if len(result) != 0:
-        response = {'headers':["Last Rank"],'rows':result[0][0]}
+        response = {'headers':["Last Rank","Start 1","Start 2","Start 3","Start 4"],'rows':[result[0][0],result[0][1],result[0][2],result[0][3],result[0][4]]}
     else:
         response = {'headers':["No Data"],'rows':[]}
     logger.logit("Rendered `config`")
@@ -106,11 +106,41 @@ def get_runner_info():
     finally:
         return response
 
+@app.route('/admin',methods=['GET'])
+def admin():
+    # localhost:2400/admin
+    return render_template('admin.html')
+
+
+@app.route('/updatestart',methods=['GET'])
+def update_start():
+    # localhost:2400/updatestart?seeding_id=1
+    seeding_id = int(request.args.get('seeding_id'))
+    try:
+        result = queries.runQuery(f"SELECT * FROM config",None,"non-DML")
+        logger.logit(result) # [(0, None, None, None, None)]
+        if result[0][seeding_id]==None:
+            curr_time = logger.get_time()
+            queries.runQuery(f"UPDATE config SET start_{seeding_id}='{curr_time}'",None,"DML")
+            result = queries.runQuery(f"UPDATE users SET start='{curr_time}' WHERE seeding_id='{seeding_id}'",None,"DML")
+            response = {'headers':["Success"],'rows':f"Updated Start time for {seeding_id} to {curr_time}"}
+            logger.logit(f"Updated Start time for {seeding_id} to {curr_time}")
+        else:
+            response = {'headers':["Error"],'rows':f"Start time already set for {seeding_id}"}
+            logger.logit(f"Time for `{seeding_id}` Seeding already set")
+    except Exception as e:
+        error = "No Runner data" if len(result)==0 else e
+        response = {'headers':["Error"],'rows':[error]}
+        logger.logit(f"Error while inserting user: {error}")
+    finally:
+        return jsonify(response)
+
 @app.route('/updatecheckpoint',methods=['GET'])
 def update_checkpoint():
     # localhost:2400/updatecheckpoint?user_id=21f1002369
     user_id = str(request.args.get('user_id'))
     try:
+        queries.runQuery(f"UPDATE users SET cp1='{logger.get_time()}' WHERE uid='{user_id}'",None,"DML")
         result = queries.runQuery(f"UPDATE users SET cp1='{logger.get_time()}' WHERE uid='{user_id}'",None,"DML")
         response = {'headers':["Success"],'rows':result}
         logger.logit(f"Updated checkpoint for user `{user_id}`")
@@ -159,11 +189,11 @@ def upload():
             csvreader = csv.reader(csvfile)
             val = []
             for row in csvreader:
-                val.append((row[0],row[1],row[2]))
+                val.append((row[0],row[1],int(row[2]),row[3]))
         try:
-            queries.runQuery("INSERT INTO users (uid,name,group_id) VALUES (%s,%s,%s)",val,"many")
-            response = {'headers':["Upload Succesfull"],'rows':val}
-            logger.logit(f"Updated Database `{val}`")
+            success = queries.runQuery("INSERT INTO users (uid,name,seeding_id,group_id) VALUES (%s,%s,%s,%s)",val,"many")
+            response = {'headers':["Upload Succesfull"],'rows written':success}
+            logger.logit(f"Updated Database with `{success}` rows")
         except Exception as e:
             response = {'headers':["Error while uploading to database"],'rows':[e]}
             logger.logit(f"Error while uploading to database: {e}")
@@ -173,16 +203,17 @@ def upload():
 def downloadCSV():
     # localhost:2400/download
     logger.logit(f"CSV file downloaded")
-    return send_file(os.path.join(app.config['DOWNLOAD_FOLDER'], 'users.csv'))
+    return send_file(os.path.join(app.config['DOWNLOAD_FOLDER'], 'Runners_backup.csv'))
 
 @app.route('/delete', methods = ['GET'])
 def deleteUserData():
     # localhost:2400/delete
     try:
-        if os.exist(os.path.join(app.config['UPLOAD_FOLDER'], 'users.csv')):
-            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], 'users.csv'))
+        if os.path.exists(os.path.join(app.config['UPLOAD_FOLDER'], 'Runners.csv')):
+            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], 'Runners.csv'))
         queries.runQuery("DELETE FROM users;",None,"DML")
-        queries.runQuery(f"UPDATE config SET last_rank=0",None,"DML")
+        queries.runQuery("DELETE FROM config;",None,"DML")
+        queries.runQuery(f"INSERT INTO config (last_rank,start_1,start_2,start_3,start_4) VALUES (%s,%s,%s,%s,%s)",(0,None,None,None,None),"DML")
         response = {'headers':["Success"],'rows':'Deleted'}
         logger.logit("Deleted all data from `users`&`config` table")
     except Exception as e:

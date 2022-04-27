@@ -70,7 +70,7 @@ def runQuery(query,data,queryType): # run query - Production only
                 conn.close()
                 # logger.logit(f"Successfull {cursor.rowcount} row insertions")
                 # logger.logit(f"Succesfull **INSERT Many Query** - `{query}`")
-                return True
+                return cursor.rowcount
             else:
                 cursor = conn.cursor()
                 cursor.execute(query,data)
