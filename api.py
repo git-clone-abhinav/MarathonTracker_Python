@@ -24,7 +24,7 @@ def users():
     query = f'SELECT * from users ;'
     result = queries.runQuery(query,data=None,queryType="non-DQL")
     if len(result) != 0:
-        response = {'headers':['User ID','Name',"Group","Check Point 1 TimeStamp","Finish TimeStamp","Rank"],'rows':result}
+        response = {'headers':["User ID","Name","Seeding","Group","Start","Check Point 1 TimeStamp","Finish TimeStamp","Rank"],'rows':result}
     else:
         response = {'headers':["No Data"],'rows':[]}
     logger.logit("Rendered `users`")
@@ -57,18 +57,88 @@ def insertUser():
     finally:
         return jsonify(response)
 
+@app.route('/advanceduserinfo', methods = ['GET'])
+def advancedUserInfo():
+    # http://localhost:2400/advanceduserinfo?seeding_id=1&group_id=A
+    # http://localhost:2400/advanceduserinfo?seeding_id=1
+    # http://localhost:2400/advanceduserinfo?group_id=A
+    
+    group_id = request.args.get('group_id')
+    seeding_id = request.args.get('seeding_id')
+    if group_id!=None and seeding_id==None:
+        try:
+            result = queries.runQuery(f"SELECT * FROM users WHERE group_id='{group_id}'",None,"non-DML")
+            if len(result) != 0:
+                response = {'headers':["User ID","Name","Seeding","Group","Start","Check Point 1 TimeStamp","Finish TimeStamp","Rank"],'rows':result}
+            else:
+                response = {'headers':["No Data"],'rows':[]}
+                logger.logit(f"Rendered `getuserbygroup` for group {group_id}")
+        except Exception as e:
+            response = {'headers':["Error"],'rows':[e]}
+            logger.logit(f"Error while getting user by group {group_id}: {e}")
+        finally:
+            return jsonify(response)
+    elif group_id==None and seeding_id!=None:
+        try:
+            query = f'SELECT * from users where seeding_id={int(seeding_id)} ;'
+            result = queries.runQuery(query,data=None,queryType="non-DQL")
+            if len(result) != 0:
+                response = {'headers':["User ID","Name","Seeding","Group","Start","Check Point 1 TimeStamp","Finish TimeStamp","Rank"],'rows':result}
+            else:
+                response = {'headers':["No Data"],'rows':[]}
+            logger.logit(f"Rendered `getuserbyseeding` for seeding no `{int(seeding_id)}`")
+        except Exception as e:
+            response = {'headers':["Error"],'rows':[e]}
+            logger.logit(f"Error while getting user by seeding {int(seeding_id)}: {e}")
+        finally:
+            return response
+    elif group_id!=None and group_id!=None:
+        try:
+            query = f'SELECT * from users where group_id="{group_id}" and seeding_id={int(seeding_id)} ;'
+            result = queries.runQuery(query,data=None,queryType="non-DQL")
+            if len(result) != 0:
+                response = {'headers':["User ID","Name","Seeding","Group","Start","Check Point 1 TimeStamp","Finish TimeStamp","Rank"],'rows':result}
+            else:
+                response = {'headers':["No Data"],'rows':[]}
+            logger.logit(f"Rendered `getuserbygroup` for group {group_id} and seeding no `{int(seeding_id)}`")
+        except Exception as e:
+            response = {'headers':["Error"],'rows':[e]}
+            logger.logit(f"Error while getting user by group {group_id} and seeding {int(seeding_id)}: {e}")
+        finally:
+            return response
+    else:
+        response = {'headers':["Error"],'rows':["Invalid Request, pass atleast one header"]}
+        logger.logit(f"Invalid `advanceduser` Request, pass atleast one header")
+        return jsonify(response)
 
-@app.route('/getrunners',methods=['GET'])
-def get_runners():
+@app.route('/getuserbyseeding', methods = ['GET'])
+def getUserBySeeding():
+    # localhost:5000/getuserbyseeding?seeding_id=1
+    seeding_id = int(request.args.get('seeding_id'))
+    try:
+        query = f'SELECT * from users where seeding_id={seeding_id} ;'
+        result = queries.runQuery(query,data=None,queryType="non-DQL")
+        if len(result) != 0:
+            response = {'headers':["User ID","Name","Seeding","Group","Start","Check Point 1 TimeStamp","Finish TimeStamp","Rank"],'rows':result}
+        else:
+            response = {'headers':["No Data"],'rows':[]}
+        logger.logit(f"Rendered `getuserbyseeding` for seeding no `{seeding_id}`")
+    except Exception as e:
+        response = {'headers':["Error"],'rows':[e]}
+        logger.logit(f"Error while getting user by seeding {seeding_id}: {e}")
+    return response
+
+@app.route('/getuserbygroup',methods=['GET'])
+def getuserbygroup():
     # localhost:2400/getrunners?group_id=A
     group_id = str(request.args.get('group_id'))
     try:
         result = queries.runQuery(f"SELECT * FROM users WHERE group_id='{group_id}'",None,"non-DML")
-        response = {'headers':["Success"],'rows':result}
-        logger.logit(f"Rendered `get_runners` for group {group_id}")
+        response = {'headers':["User ID","Name","Seeding","Group","Start","Check Point 1 TimeStamp","Finish TimeStamp","Rank"],'rows':result}
+        logger.logit(f"Rendered `getuserbygroup` for group {group_id}")
     except Exception as e:
         response = {'headers':["Error"],'rows':[e]}
-        logger.logit(f"Error while inserting user: {e}")
+        logger.logit(f"Error while getting user by group {group_id}: {e}")
     finally:
         return jsonify(response)
 
@@ -86,19 +156,23 @@ def get_runner_info():
             inserter.append(result[0][0])
             inserter.append(result[0][1])
             inserter.append(result[0][2])
-            if result[0][3]==None:
-                inserter.append("Not yet arrived ")
-            else:
-                inserter.append(result[0][3])
             if result[0][4]==None:
-                inserter.append("Not yet arrived")
+                inserter.append("Race not Started for the User")
             else:
                 inserter.append(result[0][4])
             if result[0][5]==None:
-                inserter.append("Not assigned yet")
+                inserter.append("Not yet arrived")
             else:
                 inserter.append(result[0][5])
-            response = {'headers':['User ID','Name',"Group","Check Point 1 TimeStamp","Finish TimeStamp","Rank"],'rows':inserter}
+            if result[0][6]==None:
+                inserter.append("Not yet arrived")
+            else:
+                inserter.append(result[0][6])
+            if result[0][7]==None:
+                inserter.append("Not yet assigned")
+            else:
+                inserter.append(result[0][7])
+            response = {'headers':["User ID","Name","Seeding","Group","Start","Check Point 1 TimeStamp","Finish TimeStamp","Rank"],'rows':inserter}
         logger.logit(f"Rendered `get_runner_info` for user {user_id}")
     except Exception as e:
         response = {'headers':["Error"],'rows':[e]}
@@ -118,7 +192,7 @@ def update_start():
     seeding_id = int(request.args.get('seeding_id'))
     try:
         result = queries.runQuery(f"SELECT * FROM config",None,"non-DML")
-        logger.logit(result) # [(0, None, None, None, None)]
+        # logger.logit(result) # [(0, None, None, None, None)]
         if result[0][seeding_id]==None:
             curr_time = logger.get_time()
             queries.runQuery(f"UPDATE config SET start_{seeding_id}='{curr_time}'",None,"DML")
@@ -213,7 +287,7 @@ def deleteUserData():
             os.remove(os.path.join(app.config['UPLOAD_FOLDER'], 'Runners.csv'))
         queries.runQuery("DELETE FROM users;",None,"DML")
         queries.runQuery("DELETE FROM config;",None,"DML")
-        queries.runQuery(f"INSERT INTO config (last_rank,start_1,start_2,start_3,start_4) VALUES (%s,%s,%s,%s,%s)",(0,None,None,None,None),"DML")
+        queries.runQuery(f"INSERT INTO config (last_rank,start_1,start_2,start_3,start_4,start_5) VALUES (%s,%s,%s,%s,%s,%s)",(0,None,None,None,None,None),"DML")
         response = {'headers':["Success"],'rows':'Deleted'}
         logger.logit("Deleted all data from `users`&`config` table")
     except Exception as e:
