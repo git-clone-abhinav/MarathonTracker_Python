@@ -79,6 +79,22 @@ def advancedUserInfo():
 
     return response
 
+@app.route('/vol1A',methods=['GET'])
+def vol1A():
+    return render_template("vol1A.html")
+
+@app.route('/vol2A',methods=['GET'])
+def vol2A():
+    return render_template("vol2A.html")
+
+@app.route('/vol1B',methods=['GET'])
+def vol1B():
+    return render_template("vol1B.html")
+
+@app.route('/vol2B',methods=['GET'])
+def vol2B():
+    return render_template("vol2B.html")
+
 
 @app.route('/getuserbyseeding', methods = ['GET'])
 def getUserBySeeding():
@@ -128,48 +144,41 @@ def update_start():
     finally:
         return jsonify(response)
 
-@app.route('/updatecheckpoint',methods=['GET'])
+
+@app.route('/temp_data',methods=['GET','POST'])
 def update_checkpoint():
-    # localhost:2400/updatecheckpoint?bib=1
-    bib = int(request.args.get('bib'))
-    try:
-        result = queries.runQuery(f"SELECT * FROM users WHERE bib={bib}",None,"non-DML")####
-        if len(result)==0:
-            response = {'headers':["Error"],'rows':f"No user found with bib no {bib}"}
-            logger.logit(f"No user found with bib no {bib}")
-        else:
-            curr_time = logger.get_time()
-            queries.runQuery(f"UPDATE users SET cp='{curr_time}' WHERE bib={bib}",None,"DML")####
-            response = {'headers':["Success"],'rows':f"Updated checkpoint for bib no {bib} to {curr_time}"}
-            logger.logit(f"Updated checkpoint for bib no {bib} to {curr_time}")
-    except Exception as e:
-        error = "No Runner data" if len(result)==0 else e
-        response = {'headers':["Error"],'rows':[error]}
-        logger.logit(f"Error while inserting user: {error}")
-    finally:
-        return jsonify(response)
+    if request.method == 'POST':
+        bib = int(request.args.get("id"))
+        lane = request.args.get("lane")
+        try:
+            result = queries.runQuery(f"SELECT * FROM users WHERE bib={bib}",None,"non-DML")####
+            if len(result)==None:
+                response = {'headers':["Error"],'rows':f"No user found with bib no {bib}"}
+                logger.logit(f"No user found with bib no {bib}")
+            else:
+                curr_time = logger.get_time()
+                queries.runQuery(f"INSERT INTO temp (bib,time,lane) VALUES (%s,%s,%s)",(bib,curr_time,lane),"DML")####
+                logger.logit(f"Temp data recorded for `{bib}` at `{curr_time}`")
+                response = {'headers':["Success"],'rows':[f"Temp data recorded for {bib} at {curr_time} for Lane : {lane}"]}
+        except Exception as e:
+            #error = "No Runner data" if len(result)==0 else e
+            response = {'headers':["Error"],'rows':[e]}
+            logger.logit(f"Error while updating user: {e}")
+        finally:
+            return jsonify(response)
 
+@app.route('/get_data',methods=['GET'])
+def get_data():
+    lane = request.args.get("lane")
+    # print(lane,type(lane))
+    result = queries.runQuery(f'SELECT * FROM temp WHERE lane="{lane}"',None,"non-DQL")
+    # print(result)
+    temp = []
+    for i in result:
+        temp.append({"id":i[0]})
+    response = {"rows":temp}
+    return response
 
-@app.route('/updatefinish',methods=['GET'])
-def update_finish():
-    # localhost:2400/updatefinish?bib=1
-    bib = int(request.args.get('bib'))
-    try:
-        result = queries.runQuery(f"SELECT * FROM users WHERE bib={bib}",None,"non-DML")####
-        if len(result)==0:
-            response = {'headers':["Error"],'rows':f"No user found with bib no {bib}"}
-            logger.logit(f"No user found with bib no {bib}")
-        else:
-            curr_time = logger.get_time()
-            queries.runQuery(f"UPDATE users SET finish='{curr_time}' WHERE bib={bib}",None,"DML")####
-            response = {'headers':["Success"],'rows':f"Updated finish for bib no {bib} to {curr_time}"}
-            logger.logit(f"Updated finish for bib no {bib} to {curr_time}")
-    except Exception as e:
-        error = "No Runner data" if len(result)==0 else e
-        response = {'headers':["Error"],'rows':[error]}
-        logger.logit(f"Error while inserting user: {error}")
-    finally:
-        return jsonify(response)
 
 @app.route('/upload')
 def page_upload():
@@ -217,6 +226,7 @@ def deleteUserData():
         queries.runQuery("DELETE FROM users;",None,"DML")
         queries.runQuery("DELETE FROM config;",None,"DML")
         queries.runQuery("DELETE FROM logs;",None,"DML")
+        queries.runQuery("DELETE FROM temp;",None,"DML")
         queries.runQuery(f"INSERT INTO config (start_A,start_B,start_C,start_D,start_E,start_F,start_G) VALUES (%s,%s,%s,%s,%s,%s,%s)",(None,None,None,None,None,None,None),"DML")
         response = {'headers':["Success"],'rows':'Deleted'}
         logger.logit("Deleted all data from `users`&`config` table")
@@ -227,4 +237,4 @@ def deleteUserData():
         return response
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0',port = 2400,debug = True)
+    app.run(host='0.0.0.0',port=2399,debug = True)
